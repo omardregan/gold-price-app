@@ -43,8 +43,8 @@
     <h1>حاسبة الذهب والفضة</h1>
 
     <div class="prices">
-        <p>سعر جرام الذهب الآن: <span id="goldPrice">جارٍ التحميل...</span> ريال</p>
-        <p>سعر جرام الفضة الآن: <span id="silverPrice">جارٍ التحميل...</span> ريال</p>
+        <p>سعر جرام الذهب الآن: <span id="goldPrice">جارٍ التحميل...</span> درهم</p>
+        <p>سعر جرام الفضة الآن: <span id="silverPrice">جارٍ التحميل...</span> درهم</p>
     </div>
 
     <div class="input-group">
@@ -70,8 +70,8 @@
             silver: 0
         };
 
-        // تحويل دولار إلى ريال سعودي (حسب سعر الصرف الحالي تقريباً)
-        const USD_TO_SAR = 3.75;
+        // تحويل دولار إلى درهم إماراتي
+        const USD_TO_AED = 3.67;
 
         async function fetchPrices() {
             try {
@@ -104,9 +104,9 @@
                     const goldPriceGramUSD = goldPriceOunceUSD / 31.1035;
                     const silverPriceGramUSD = silverPriceOunceUSD / 31.1035;
 
-                    // تحويل من دولار إلى ريال سعودي
-                    prices.gold = goldPriceGramUSD * USD_TO_SAR;
-                    prices.silver = silverPriceGramUSD * USD_TO_SAR;
+                    // تحويل من دولار إلى درهم إماراتي
+                    prices.gold = goldPriceGramUSD * USD_TO_AED;
+                    prices.silver = silverPriceGramUSD * USD_TO_AED;
 
                     // تحديث العرض في الصفحة
                     document.getElementById("goldPrice").textContent = prices.gold.toFixed(2);
@@ -140,7 +140,7 @@
             }
 
             const total = grams * pricePerGram;
-            document.getElementById("resultText").textContent = `السعر الإجمالي: ${total.toFixed(2)} ريال`;
+            document.getElementById("resultText").textContent = `السعر الإجمالي: ${total.toFixed(2)} درهم`;
         }
 
         // جلب الأسعار عند تحميل الصفحة
