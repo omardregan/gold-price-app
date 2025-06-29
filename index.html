@@ -16,8 +16,9 @@
 <body>
   <h1>حاسبة الذهب والفضة</h1>
   <div class="prices">
-    <p>سعر جرام الذهب الآن: <span id="goldPrice">جارٍ التحميل...</span> درهم</p>
-    <p>سعر جرام الفضة الآن: <span id="silverPrice">جارٍ التحميل...</span> درهم</p>
+    <p>سعر جرام الذهب الآن: <span id="goldPrice">جارٍ التحميل...</span> درهم</p>
+    <p>سعر جرام الفضة الآن: <span id="silverPrice">جارٍ التحميل...</span> درهم</p>
+    <p style="font-size: 14px; color: #666;">آخر تحديث: <span id="lastUpdate">جارٍ التحميل...</span></p>
   </div>
 
   <div class="input-group">
@@ -72,10 +73,18 @@
 
           document.getElementById("goldPrice").textContent = prices.gold.toFixed(2);
           document.getElementById("silverPrice").textContent = prices.silver.toFixed(2);
+
+          // التاريخ من GoldAPI بصيغة Unix Timestamp
+          const updated = new Date(gd.timestamp * 1000);
+          const options = { timeZone: 'Asia/Dubai', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute:'2-digit' };
+          const formattedDate = updated.toLocaleString('ar-EG', options);
+
+          document.getElementById("lastUpdate").textContent = formattedDate;
         } else throw Error();
       } catch(e) {
         document.getElementById("goldPrice").textContent = "خطأ في جلب السعر";
         document.getElementById("silverPrice").textContent = "خطأ في جلب السعر";
+        document.getElementById("lastUpdate").textContent = "غير متوفر";
         console.error(e);
       }
     }
