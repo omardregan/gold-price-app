@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="UTF-8" />
     <title>حاسبة الذهب والفضة</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -17,7 +17,9 @@
         .input-group {
             margin-bottom: 15px;
         }
-        input, select, button {
+        input,
+        select,
+        button {
             width: 100%;
             padding: 10px;
             margin-top: 5px;
@@ -29,52 +31,120 @@
             color: green;
             text-align: center;
         }
+        .prices {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 18px;
+            color: #333;
+        }
     </style>
 </head>
 <body>
+    <h1>حاسبة الذهب والفضة</h1>
 
-<h1>حاسبة الذهب والفضة</h1>
+    <div class="prices">
+        <p>سعر جرام الذهب الآن: <span id="goldPrice">جارٍ التحميل...</span> ريال</p>
+        <p>سعر جرام الفضة الآن: <span id="silverPrice">جارٍ التحميل...</span> ريال</p>
+    </div>
 
-<div class="input-group">
-    <label>النوع:</label>
-    <select id="metalType">
-        <option value="gold">ذهب</option>
-        <option value="silver">فضة</option>
-    </select>
-</div>
+    <div class="input-group">
+        <label>النوع:</label>
+        <select id="metalType">
+            <option value="gold">ذهب</option>
+            <option value="silver">فضة</option>
+        </select>
+    </div>
 
-<div class="input-group">
-    <label>عدد الجرامات:</label>
-    <input type="number" id="grams" placeholder="أدخل عدد الجرامات">
-</div>
+    <div class="input-group">
+        <label>عدد الجرامات:</label>
+        <input type="number" id="grams" placeholder="أدخل عدد الجرامات" />
+    </div>
 
-<button onclick="calculatePrice()">احسب السعر</button>
+    <button onclick="calculatePrice()">احسب السعر</button>
 
-<div class="result" id="resultText"></div>
+    <div class="result" id="resultText"></div>
 
-<script>
-    const prices = {
-        gold: 250.75,
-        silver: 3.15
-    };
+    <script>
+        let prices = {
+            gold: 0,
+            silver: 0
+        };
 
-    function calculatePrice() {
-        const grams = parseFloat(document.getElementById("grams").value);
-        const metal = document.getElementById("metalType").value;
-        const pricePerGram = prices[metal];
+        // تحويل دولار إلى ريال سعودي (حسب سعر الصرف الحالي تقريباً)
+        const USD_TO_SAR = 3.75;
 
-        if (isNaN(grams) || grams <= 0) {
-            document.getElementById("resultText").textContent = "يرجى 
-إدخال عدد صحيح للجرامات.";
-            return;
+        async function fetchPrices() {
+            try {
+                // جلب سعر الذهب (XAU) بالـ USD من GoldAPI
+                const goldResponse = await fetch("https://www.goldapi.io/api/XAU/USD", {
+                    method: "GET",
+                    headers: {
+                        "x-access-token": "goldapi-1qe0smchzu8n0-io",
+                        "Content-Type": "application/json"
+                    }
+                });
+                const goldData = await goldResponse.json();
+
+                // جلب سعر الفضة (XAG) بالـ USD من GoldAPI
+                const silverResponse = await fetch("https://www.goldapi.io/api/XAG/USD", {
+                    method: "GET",
+                    headers: {
+                        "x-access-token": "goldapi-1qe0smchzu8n0-io",
+                        "Content-Type": "application/json"
+                    }
+                });
+                const silverData = await silverResponse.json();
+
+                if (goldData.price && silverData.price) {
+                    // سعر الذهب والفضة بالأونصة (ounce)
+                    const goldPriceOunceUSD = goldData.price;
+                    const silverPriceOunceUSD = silverData.price;
+
+                    // تحويل الأونصة إلى جرام (1 أونصة = 31.1035 جرام)
+                    const goldPriceGramUSD = goldPriceOunceUSD / 31.1035;
+                    const silverPriceGramUSD = silverPriceOunceUSD / 31.1035;
+
+                    // تحويل من دولار إلى ريال سعودي
+                    prices.gold = goldPriceGramUSD * USD_TO_SAR;
+                    prices.silver = silverPriceGramUSD * USD_TO_SAR;
+
+                    // تحديث العرض في الصفحة
+                    document.getElementById("goldPrice").textContent = prices.gold.toFixed(2);
+                    document.getElementById("silverPrice").textContent = prices.silver.toFixed(2);
+                } else {
+                    document.getElementById("goldPrice").textContent = "خطأ في جلب السعر";
+                    document.getElementById("silverPrice").textContent = "خطأ في جلب السعر";
+                }
+            } catch (error) {
+                console.error("حدث خطأ أثناء جلب الأسعار:", error);
+                document.getElementById("goldPrice").textContent = "خطأ في جلب السعر";
+                document.getElementById("silverPrice").textContent = "خطأ في جلب السعر";
+            }
         }
 
-        const total = grams * pricePerGram;
-        document.getElementById("resultText").textContent = `السعر 
-الإجمالي: ${total.toFixed(2)} ريال`;
-    }
-</script>
+        function calculatePrice() {
+            const grams = parseFloat(document.getElementById("grams").value);
+            const metal = document.getElementById("metalType").value;
+            const pricePerGram = prices[metal];
 
+            if (isNaN(grams) || grams <= 0) {
+                document.getElementById("resultText").textContent =
+                    "يرجى إدخال عدد صحيح للجرامات.";
+                return;
+            }
+
+            if (pricePerGram === 0) {
+                document.getElementById("resultText").textContent =
+                    "السعر لم يُحمّل بعد، يرجى الانتظار قليلاً.";
+                return;
+            }
+
+            const total = grams * pricePerGram;
+            document.getElementById("resultText").textContent = `السعر الإجمالي: ${total.toFixed(2)} ريال`;
+        }
+
+        // جلب الأسعار عند تحميل الصفحة
+        fetchPrices();
+    </script>
 </body>
 </html>
-
