@@ -1,0 +1,197 @@
+
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>أسعار الذهب والفضة</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      direction: rtl;
+      background-color: #f0f0f0;
+      margin: 0;
+      padding: 0 10px;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: auto;
+      background: #fff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 0 10px #ccc;
+    }
+
+    h1 {
+      text-align: center;
+      color: #222;
+      margin-bottom: 20px;
+    }
+
+    .section {
+      margin-bottom: 20px;
+    }
+
+    .price-box {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+      margin: 5px 0;
+      background: #f8f8f8;
+      border-radius: 5px;
+    }
+
+    .label {
+      font-weight: bold;
+    }
+
+    .value {
+      font-size: 16px;
+    }
+
+    .input-group {
+      margin-top: 10px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      font-size: 16px;
+      margin-top: 5px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    .result {
+      text-align: center;
+      font-size: 18px;
+      color: #333;
+      margin-top: 15px;
+    }
+
+    .note {
+      font-size: 14px;
+      color: #777;
+      text-align: center;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 500px) {
+      .price-box {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>حاسبة الذهب والفضة</h1>
+
+    <div id="priceSection" class="section">
+      	<div class="price-box"><span class="label">سعر الكيلو ذهب:</span> <span class="value" id="goldKg">...</span></div>
+	<div class="price-box"><span class="label">سعر الكيلو فضة:</span> <span class="value" id="silverKg">...</span></div>
+	<div class="price-box"><span class="label">سعر الجرام ذهب:</span> <span class="value" id="goldGram">...</span></div>
+	<div class="price-box"><span class="label">سعر الجرام فضة:</span> <span class="value" id="silverGram">...</span></div>
+
+    </div>
+
+    <div class="section">
+      <div class="input-group">
+        <label>اختر المعدن:</label>
+        <select id="metalType">
+          <option value="gold">ذهب</option>
+          <option value="silver">فضة</option>
+        </select>
+      </div>
+
+      <div class="input-group">
+        <label>عدد الجرامات:</label>
+        <input type="number" id="grams" placeholder="مثلاً: 5" />
+      </div>
+
+      <button onclick="calculate()">احسب السعر</button>
+      <div id="result" class="result"></div>
+    </div>
+
+    <div class="note">
+      الأسعار حية وتُحدث تلقائياً من السوق العالمي.<br/>
+      الأسعار بالدرهم الإماراتي ولا تشمل الضرائب أو المصنعية.
+    </div>
+  </div>
+
+  <script>
+    const prices = {
+      gold: { oz: 0 },
+      silver: { oz: 0 }
+    };
+
+    async function fetchPrices() {
+      try {
+        const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
+        const fxData = await fxRes.json();
+        const usdToAed = fxData.rates.AED;
+
+        const [goldData, silverData] = await Promise.all([
+          fetch("https://www.goldapi.io/api/XAU/USD", {
+            headers: {
+              "x-access-token": "goldapi-1qe0smchzu8n0-io",
+              "Content-Type": "application/json"
+            }
+          }).then(res => res.json()),
+          fetch("https://www.goldapi.io/api/XAG/USD", {
+            headers: {
+              "x-access-token": "goldapi-1qe0smchzu8n0-io",
+              "Content-Type": "application/json"
+            }
+          }).then(res => res.json())
+        ]);
+
+        prices.gold.oz = goldData.price * usdToAed;
+        prices.silver.oz = silverData.price * usdToAed;
+
+        const ozToGram = oz => oz / 31.1035;
+        const ozToKg = oz => ozToGram(oz) * 1000;
+        const format = n => n.toFixed(2);
+
+        const goldGram = ozToGram(prices.gold.oz);
+        const silverGram = ozToGram(prices.silver.oz);
+        document.getElementById("goldGram").textContent = `${format(goldGram)} درهم`;
+        document.getElementById("silverGram").textContent = `${format(silverGram)} درهم`;
+
+        document.getElementById("goldKg").textContent = `${format(goldGram * 1000)} درهم`;
+        document.getElementById("silverKg").textContent = `${format(silverGram * 1000)} درهم`;
+
+        const updated = new Date(goldData.timestamp * 1000);
+        const date = updated.toLocaleString("ar-EG", { timeZone: "Asia/Dubai" });
+        document.getElementById("lastUpdate").textContent = date;
+
+      } catch (err) {
+        console.error("Error fetching prices:", err);
+        alert("فشل تحميل الأسعار. تأكد من الاتصال بالإنترنت.");
+      }
+    }
+
+    function calculate() {
+      const grams = parseFloat(document.getElementById("grams").value);
+      const metal = document.getElementById("metalType").value;
+
+      if (isNaN(grams) || grams <= 0) {
+        document.getElementById("result").textContent = "يرجى إدخال عدد صحيح من الجرامات.";
+        return;
+      }
+
+      const gramPrice = metal === 'gold'
+        ? prices.gold.oz / 31.1035
+        : prices.silver.oz / 31.1035;
+
+      const total = grams * gramPrice;
+      document.getElementById("result").textContent = `السعر الإجمالي: ${total.toFixed(2)} درهم`;
+    }
+
+    fetchPrices();
+    setInterval(fetchPrices, 15000); // تحديث تلقائي كل 15 ثانية
+  </script>
+</body>
+</html>
