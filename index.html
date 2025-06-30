@@ -1,9 +1,8 @@
-
 <!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8" />
-  <title>أسعار الذهب والفضة</title>
+  <title>حاسبة الذهب والفضة</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -90,11 +89,11 @@
     <h1>حاسبة الذهب والفضة</h1>
 
     <div id="priceSection" class="section">
-      	<div class="price-box"><span class="label">سعر الكيلو ذهب:</span> <span class="value" id="goldKg">...</span></div>
-	<div class="price-box"><span class="label">سعر الكيلو فضة:</span> <span class="value" id="silverKg">...</span></div>
-	<div class="price-box"><span class="label">سعر الجرام ذهب:</span> <span class="value" id="goldGram">...</span></div>
-	<div class="price-box"><span class="label">سعر الجرام فضة:</span> <span class="value" id="silverGram">...</span></div>
-
+      <div class="price-box"><span class="label">سعر الكيلو ذهب:</span> <span class="value" id="goldKg">...</span></div>
+      <div class="price-box"><span class="label">سعر الكيلو فضة:</span> <span class="value" id="silverKg">...</span></div>
+      <div class="price-box"><span class="label">سعر الجرام ذهب:</span> <span class="value" id="goldGram">...</span></div>
+      <div class="price-box"><span class="label">سعر الجرام فضة:</span> <span class="value" id="silverGram">...</span></div>
+      <div class="price-box"><span class="label">آخر تحديث:</span> <span class="value" id="lastUpdate">...</span></div>
     </div>
 
     <div class="section">
@@ -123,8 +122,8 @@
 
   <script>
     const prices = {
-      gold: { oz: 0 },
-      silver: { oz: 0 }
+      gold: 0,
+      silver: 0
     };
 
     async function fetchPrices() {
@@ -133,43 +132,29 @@
         const fxData = await fxRes.json();
         const usdToAed = fxData.rates.AED;
 
-        const [goldData, silverData] = await Promise.all([
-          fetch("https://www.goldapi.io/api/XAU/USD", {
-            headers: {
-              "x-access-token": "goldapi-1qe0smchzu8n0-io",
-              "Content-Type": "application/json"
-            }
-          }).then(res => res.json()),
-          fetch("https://www.goldapi.io/api/XAG/USD", {
-            headers: {
-              "x-access-token": "goldapi-1qe0smchzu8n0-io",
-              "Content-Type": "application/json"
-            }
-          }).then(res => res.json())
-        ]);
+        const metalsRes = await fetch("https://api.metals.live/v1/spot");
+        const metalsData = await metalsRes.json();
 
-        prices.gold.oz = goldData.price * usdToAed;
-        prices.silver.oz = silverData.price * usdToAed;
+        const goldPriceUsd = metalsData.find(m => m.gold);
+        const silverPriceUsd = metalsData.find(m => m.silver);
 
-        const ozToGram = oz => oz / 31.1035;
-        const ozToKg = oz => ozToGram(oz) * 1000;
-        const format = n => n.toFixed(2);
+        const goldPerGramAed = (goldPriceUsd.gold / 31.1035) * usdToAed;
+        const silverPerGramAed = (silverPriceUsd.silver / 31.1035) * usdToAed;
 
-        const goldGram = ozToGram(prices.gold.oz);
-        const silverGram = ozToGram(prices.silver.oz);
-        document.getElementById("goldGram").textContent = `${format(goldGram)} درهم`;
-        document.getElementById("silverGram").textContent = `${format(silverGram)} درهم`;
+        prices.gold = goldPerGramAed;
+        prices.silver = silverPerGramAed;
 
-        document.getElementById("goldKg").textContent = `${format(goldGram * 1000)} درهم`;
-        document.getElementById("silverKg").textContent = `${format(silverGram * 1000)} درهم`;
+        document.getElementById("goldGram").textContent = goldPerGramAed.toFixed(2) + " درهم";
+        document.getElementById("silverGram").textContent = silverPerGramAed.toFixed(2) + " درهم";
 
-        const updated = new Date(goldData.timestamp * 1000);
-        const date = updated.toLocaleString("ar-EG", { timeZone: "Asia/Dubai" });
-        document.getElementById("lastUpdate").textContent = date;
+        document.getElementById("goldKg").textContent = (goldPerGramAed * 1000).toFixed(2) + " درهم";
+        document.getElementById("silverKg").textContent = (silverPerGramAed * 1000).toFixed(2) + " درهم";
+
+        document.getElementById("lastUpdate").textContent = new Date().toLocaleString("ar-EG", { timeZone: "Asia/Dubai" });
 
       } catch (err) {
-        console.error("Error fetching prices:", err);
-        alert("فشل تحميل الأسعار. تأكد من الاتصال بالإنترنت.");
+        console.error("خطأ في جلب البيانات", err);
+        alert("حدث خطأ أثناء تحميل الأسعار. تأكد من الاتصال بالإنترنت.");
       }
     }
 
@@ -182,16 +167,14 @@
         return;
       }
 
-      const gramPrice = metal === 'gold'
-        ? prices.gold.oz / 31.1035
-        : prices.silver.oz / 31.1035;
-
+      const gramPrice = prices[metal];
       const total = grams * gramPrice;
+
       document.getElementById("result").textContent = `السعر الإجمالي: ${total.toFixed(2)} درهم`;
     }
 
     fetchPrices();
-    setInterval(fetchPrices, 15000); // تحديث تلقائي كل 15 ثانية
+    setInterval(fetchPrices, 15000); // تحديث كل 15 ثانية
   </script>
 </body>
 </html>
