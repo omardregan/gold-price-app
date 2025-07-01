@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <title>حاسبة الذهب والفضة</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -14,7 +15,7 @@
     }
 
     .container {
-      max-width: 600px;
+      max-width: 700px;
       margin: auto;
       background: #fff;
       border-radius: 10px;
@@ -77,11 +78,8 @@
       margin-top: 20px;
     }
 
-    @media (max-width: 500px) {
-      .price-box {
-        flex-direction: column;
-        align-items: flex-start;
-      }
+    canvas {
+      max-width: 100%;
     }
   </style>
 </head>
@@ -115,27 +113,33 @@
       <div id="result" class="result"></div>
     </div>
 
+    <div class="section">
+      <canvas id="priceChart"></canvas>
+    </div>
+
     <div class="note">
-  الأسعار تُحدَّث مرة واحدة فقط يوميًا.<br/>
-  آخر تحديث يتم عند أول دخول في اليوم.<br/>
-  الأسعار بالدرهم الإماراتي ولا تشمل الضرائب أو المصنعية.<br/>
-  يظهر السعر باللون <span style="color:green;">الأخضر</span> إذا ارتفع، و<span style="color:red;">الأحمر</span> إذا انخفض.
+      الأسعار تُحدَّث مرة واحدة فقط يوميًا.<br/>
+      التحديث يتم بعد منتصف الليل بتوقيت الإمارات.<br/>
+      الأسعار بالدرهم الإماراتي ولا تشمل الضرائب أو المصنعية.<br/>
+      يظهر السعر باللون <span style="color:green;">الأخضر</span> إذا ارتفع، و<span style="color:red;">الأحمر</span> إذا انخفض.
+    </div>
   </div>
-    
-</div>
 
   <script>
-    const prices = {
-      gold: 0,
-      silver: 0
-    };
+    const prices = { gold: 0, silver: 0 };
+
+    function getTodayInDubai() {
+      const now = new Date().toLocaleString("en-US", { timeZone: "Asia/Dubai" });
+      return new Date(now).toISOString().split('T')[0];
+    }
 
     async function fetchPricesIfNeeded() {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getTodayInDubai();
       const storedData = JSON.parse(localStorage.getItem('metalPrices'));
 
       if (storedData && storedData.date === today) {
         loadPricesFromStorage(storedData);
+        renderChart();
         return;
       }
 
@@ -167,9 +171,14 @@
           lastUpdate: new Date().toLocaleString("ar-EG", { timeZone: "Asia/Dubai" })
         };
 
-        const oldData = JSON.parse(localStorage.getItem("metalPrices"));
+        // حفظ التاريخ في التاريخية
+        const history = JSON.parse(localStorage.getItem("priceHistory")) || [];
+        history.push({ date: today, gold: goldPerGramAed, silver: silverPerGramAed });
+        localStorage.setItem("priceHistory", JSON.stringify(history));
+
         localStorage.setItem("metalPrices", JSON.stringify(updatedData));
-        loadPricesFromStorage(updatedData, oldData);
+        loadPricesFromStorage(updatedData);
+        renderChart();
       } catch (err) {
         console.error("خطأ في جلب الأسعار:", err);
         alert("فشل تحميل الأسعار. تأكد من الاتصال بالإنترنت أو حاول لاحقاً.");
@@ -215,6 +224,43 @@
 
       const total = grams * prices[metal];
       document.getElementById("result").textContent = `السعر الإجمالي: ${total.toFixed(2)} درهم`;
+    }
+
+    function renderChart() {
+      const history = JSON.parse(localStorage.getItem("priceHistory")) || [];
+      const labels = history.map(item => item.date);
+      const goldData = history.map(item => item.gold.toFixed(2));
+      const silverData = history.map(item => item.silver.toFixed(2));
+
+      const ctx = document.getElementById("priceChart").getContext("2d");
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'ذهب (درهم/جرام)',
+              data: goldData,
+              borderColor: 'gold',
+              fill: false
+            },
+            {
+              label: 'فضة (درهم/جرام)',
+              data: silverData,
+              borderColor: 'silver',
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: false
+            }
+          }
+        }
+      });
     }
 
     fetchPricesIfNeeded();
