@@ -47,6 +47,7 @@
 
     .value {
       font-size: 16px;
+      transition: color 0.3s;
     }
 
     .input-group {
@@ -115,8 +116,10 @@
     </div>
 
     <div class="note">
-      الأسعار حية وتُحدث تلقائياً من السوق العالمي.<br/>
-      الأسعار بالدرهم الإماراتي ولا تشمل الضرائب أو المصنعية.
+      الأسعار تُحدث مرة واحدة فقط يوميًا لتوفير الموارد.<br/>
+      آخر تحديث يتم عند أول دخول في اليوم.<br/>
+      الأسعار بالدرهم الإماراتي ولا تشمل الضرائب أو المصنعية.<br/>
+      يظهر السعر باللون <span style="color:green;">الأخضر</span> إذا ارتفع، و<span style="color:red;">الأحمر</span> إذا انخفض.
     </div>
   </div>
 
@@ -126,35 +129,77 @@
       silver: 0
     };
 
-    async function fetchPrices() {
+    async function fetchPricesIfNeeded() {
+      const today = new Date().toISOString().split('T')[0];
+      const storedData = JSON.parse(localStorage.getItem('metalPrices'));
+
+      if (storedData && storedData.date === today) {
+        loadPricesFromStorage(storedData);
+        return;
+      }
+
       try {
         const fxRes = await fetch("https://open.er-api.com/v6/latest/USD");
         const fxData = await fxRes.json();
         const usdToAed = fxData.rates.AED;
 
-        const metalsRes = await fetch("https://api.metals.live/v1/spot");
-        const metalsData = await metalsRes.json();
+        const headers = {
+          "x-access-token": "goldapi-1qe0smchzu8n0-io",
+          "Content-Type": "application/json"
+        };
 
-        const goldPriceUsd = metalsData.find(m => m.gold);
-        const silverPriceUsd = metalsData.find(m => m.silver);
+        const [goldRes, silverRes] = await Promise.all([
+          fetch("https://www.goldapi.io/api/XAU/USD", { headers }),
+          fetch("https://www.goldapi.io/api/XAG/USD", { headers })
+        ]);
 
-        const goldPerGramAed = (goldPriceUsd.gold / 31.1035) * usdToAed;
-        const silverPerGramAed = (silverPriceUsd.silver / 31.1035) * usdToAed;
+        const goldData = await goldRes.json();
+        const silverData = await silverRes.json();
 
-        prices.gold = goldPerGramAed;
-        prices.silver = silverPerGramAed;
+        const goldPerGramAed = (goldData.price / 31.1035) * usdToAed;
+        const silverPerGramAed = (silverData.price / 31.1035) * usdToAed;
 
-        document.getElementById("goldGram").textContent = goldPerGramAed.toFixed(2) + " درهم";
-        document.getElementById("silverGram").textContent = silverPerGramAed.toFixed(2) + " درهم";
+        const updatedData = {
+          date: today,
+          gold: goldPerGramAed,
+          silver: silverPerGramAed,
+          lastUpdate: new Date().toLocaleString("ar-EG", { timeZone: "Asia/Dubai" })
+        };
 
-        document.getElementById("goldKg").textContent = (goldPerGramAed * 1000).toFixed(2) + " درهم";
-        document.getElementById("silverKg").textContent = (silverPerGramAed * 1000).toFixed(2) + " درهم";
-
-        document.getElementById("lastUpdate").textContent = new Date().toLocaleString("ar-EG", { timeZone: "Asia/Dubai" });
-
+        const oldData = JSON.parse(localStorage.getItem("metalPrices"));
+        localStorage.setItem("metalPrices", JSON.stringify(updatedData));
+        loadPricesFromStorage(updatedData, oldData);
       } catch (err) {
-        console.error("خطأ في جلب البيانات", err);
-        alert("حدث خطأ أثناء تحميل الأسعار. تأكد من الاتصال بالإنترنت.");
+        console.error("خطأ في جلب الأسعار:", err);
+        alert("فشل تحميل الأسعار. تأكد من الاتصال بالإنترنت أو حاول لاحقاً.");
+      }
+    }
+
+    function loadPricesFromStorage(data, oldData = {}) {
+      const prevGold = oldData?.gold || data.gold;
+      const prevSilver = oldData?.silver || data.silver;
+
+      prices.gold = data.gold;
+      prices.silver = data.silver;
+
+      updatePriceDisplay("goldGram", data.gold, prevGold);
+      updatePriceDisplay("silverGram", data.silver, prevSilver);
+      updatePriceDisplay("goldKg", data.gold * 1000, prevGold * 1000);
+      updatePriceDisplay("silverKg", data.silver * 1000, prevSilver * 1000);
+
+      document.getElementById("lastUpdate").textContent = data.lastUpdate;
+    }
+
+    function updatePriceDisplay(elementId, current, previous) {
+      const el = document.getElementById(elementId);
+      el.textContent = current.toFixed(2) + " درهم";
+
+      if (current > previous) {
+        el.style.color = "green";
+      } else if (current < previous) {
+        el.style.color = "red";
+      } else {
+        el.style.color = "#333";
       }
     }
 
@@ -167,14 +212,11 @@
         return;
       }
 
-      const gramPrice = prices[metal];
-      const total = grams * gramPrice;
-
+      const total = grams * prices[metal];
       document.getElementById("result").textContent = `السعر الإجمالي: ${total.toFixed(2)} درهم`;
     }
 
-    fetchPrices();
-    setInterval(fetchPrices, 15000); // تحديث كل 15 ثانية
+    fetchPricesIfNeeded();
   </script>
 </body>
 </html>
